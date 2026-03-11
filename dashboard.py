@@ -27,7 +27,8 @@ time_filter = st.sidebar.selectbox(
 # Fetch the data (Only downloading what we need!)
 def get_data(filter_choice):
     query = {}
-    now = datetime.now()
+    # Force the cloud server to use Pakistan Standard Time (UTC + 5)
+    now = datetime.utcnow() + timedelta(hours=5)
     
     if filter_choice == "Last 1 Hour":
         query = {"timestamp": {"$gte": now - timedelta(hours=1)}}
@@ -69,7 +70,7 @@ else:
 
     # --- 3. SYSTEM HEALTH CHECK ---
     last_update = df.index[-1]
-    time_since_last = datetime.now() - last_update
+    time_since_last = (datetime.utcnow() + timedelta(hours=5)) - last_update
     
     if time_since_last < timedelta(minutes=2):
         st.markdown("### 🟢 **System Online** *(Receiving live edge data)*")
