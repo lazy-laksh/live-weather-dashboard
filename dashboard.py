@@ -7,10 +7,12 @@ import time
 st.set_page_config(page_title="Room Environment Dashboard", layout="wide")
 st.title("🌡️ Live Room Environment Dashboard")
 
-# Connect to the Cloud Database
+# Connect to the Cloud Database SECURELY using st.secrets
 @st.cache_resource 
 def init_connection():
-    return MongoClient("mongodb+srv://lazypanda:Lazy%402005@cluster0.yzixbpi.mongodb.net/?appName=Cluster0")
+    # Looks for MONGO_URI in .streamlit/secrets.toml (Local) or Streamlit Cloud Settings
+    # If you aren't using secrets yet, replace st.secrets["MONGO_URI"] with your URL string (but keep it safe!)
+    return MongoClient(st.secrets["MONGO_URI"]) 
 
 client = init_connection()
 db = client['RoomEnvironment']
@@ -31,11 +33,10 @@ def get_data(filter_choice):
     if df.empty:
         return df
 
-   # 1. Convert to pandas datetime
+    # 1. Convert to pandas datetime
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     
-    # 2. THE REAL TIMEZONE FIX:
-    # The Arduino bridge already saves in PKT. We just "stamp" it as Karachi time without adding hours!
+    # 2. Timezone Fix (Pakistan Time)
     if df['timestamp'].dt.tz is None:
         df['timestamp'] = df['timestamp'].dt.tz_localize('Asia/Karachi')
     else:
@@ -60,7 +61,7 @@ df = get_data(time_filter)
 
 # Check if we have data
 if df.empty:
-    st.warning(f"No data found for the {time_filter}. Make sure your Python bridge is running!")
+    st.warning(f"No data found for {time_filter}. Make sure your Python bridge is running!")
 else:
     # --- CALCULATING TRENDS & METRICS ---
     latest_temp = df['temperature'].iloc[-1]
@@ -79,17 +80,14 @@ else:
 
     # --- SYSTEM HEALTH CHECK ---
     last_update = df.index[-1]
-    
-    # Get the exact current time in Pakistan
     current_pkt_time = pd.Timestamp.now('Asia/Karachi')
-    
     time_since_last = current_pkt_time - last_update
     
     if time_since_last < pd.Timedelta(minutes=2):
         st.markdown("### 🟢 **System Online** *(Receiving live edge data)*")
     else:
         mins_ago = int(time_since_last.total_seconds() / 60)
-        mins_ago = max(0, mins_ago) # Prevent negative numbers
+        mins_ago = max(0, mins_ago)
         st.markdown(f"### 🔴 **System Offline** *(Last seen {mins_ago} minutes ago)*")
 
     # --- DRAWING THE UI ---
@@ -112,12 +110,9 @@ else:
     
     st.subheader("Raw Data Log")
     sorted_df = df.sort_index(ascending=False)
-    
-    # Format the timestamp to hide the +05:00 timezone tag for a cleaner look
     sorted_df.index = sorted_df.index.strftime('%Y-%m-%d %H:%M:%S')
-    
-    st.dataframe(sorted_df, width='stretch')
+    st.dataframe(sorted_df, use_container_width=True)
 
-# Auto-Refresh Loop
-time.sleep(5)  
+# Auto-Refresh Loop (Increased to 10 seconds to save MongoDB Read limits)
+time.sleep(10)  
 st.rerun()
