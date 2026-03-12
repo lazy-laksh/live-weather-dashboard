@@ -112,6 +112,10 @@ else:
     
     st.subheader("Raw Data Log")
     sorted_df = df.sort_index(ascending=False)
+    
+    # Format the timestamp to hide the +05:00 timezone tag for a cleaner look
+    sorted_df.index = sorted_df.index.strftime('%Y-%m-%d %H:%M:%S')
+    
     st.dataframe(sorted_df, width='stretch')
 
 # Auto-Refresh Loop
