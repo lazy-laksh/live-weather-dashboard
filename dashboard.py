@@ -31,12 +31,15 @@ def get_data(filter_choice):
     if df.empty:
         return df
 
-    # 1. Convert to pandas datetime
+   # 1. Convert to pandas datetime
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     
-    # 2. THE PERMANENT TIMEZONE FIX:
-    # PyMongo stores data in UTC. We tell Pandas it's UTC, then instantly convert it to Pakistan time.
-    df['timestamp'] = df['timestamp'].dt.tz_localize('UTC').dt.tz_convert('Asia/Karachi')
+    # 2. THE REAL TIMEZONE FIX:
+    # The Arduino bridge already saves in PKT. We just "stamp" it as Karachi time without adding hours!
+    if df['timestamp'].dt.tz is None:
+        df['timestamp'] = df['timestamp'].dt.tz_localize('Asia/Karachi')
+    else:
+        df['timestamp'] = df['timestamp'].dt.tz_convert('Asia/Karachi')
     
     df.set_index('timestamp', inplace=True)
     df.sort_index(inplace=True)
